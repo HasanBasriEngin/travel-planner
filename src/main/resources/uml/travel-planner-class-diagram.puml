@@ -1,0 +1,186 @@
+@startuml
+title Travel Planner System - Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "travelplanner" {
+    class Main {
+        +main(args: String[]): void
+    }
+}
+
+package "travelplanner.model" {
+    enum WeatherState {
+        SUNNY
+        CLOUDY
+        RAINY
+        SNOWY
+    }
+
+    class City {
+        -name: String
+        -population: int
+        -area: double
+        -currentTemperature: double
+        -currentWeatherState: WeatherState
+        +getName(): String
+        +getPopulation(): int
+        +getArea(): double
+        +getCurrentTemperature(): double
+        +getCurrentWeatherState(): WeatherState
+    }
+}
+
+package "travelplanner.repository" {
+    class CityRepository <<Singleton>> {
+        -CITY_RESOURCE: String
+        -INSTANCE: CityRepository
+        -cities: List<City>
+        -random: Random
+        -CityRepository()
+        +{static} getInstance(): CityRepository
+        +getCities(): List<City>
+        +updateRandomCityWeather(): void
+        +getWeatherCounts(): Map<WeatherState, Integer>
+    }
+}
+
+package "travelplanner.strategy" {
+    interface SortStrategy {
+        +sort(cities: List<City>): List<City>
+    }
+
+    class NameSortStrategy
+    class PopulationSortStrategy
+    class AreaSortStrategy
+}
+
+package "travelplanner.iterator" {
+    interface CityIterator {
+        +hasNext(): boolean
+        +next(): City
+    }
+
+    class WeatherFilteredCollection {
+        -cities: List<City>
+        +createSunnyIterator(): CityIterator
+        +createCloudyIterator(): CityIterator
+        +createRainyIterator(): CityIterator
+        +createSnowyIterator(): CityIterator
+    }
+
+    class SunnyCityIterator
+    class CloudyCityIterator
+    class RainyCityIterator
+    class SnowyCityIterator
+}
+
+package "travelplanner.observer" {
+    interface WeatherObserver {
+        +updateWeatherData(): void
+    }
+
+    interface WeatherSubject {
+        +attach(observer: WeatherObserver): void
+        +detach(observer: WeatherObserver): void
+        +notifyObservers(): void
+    }
+
+    class WeatherReportProvider {
+        -UPDATE_INTERVAL_MILLISECONDS: long
+        -observers: List<WeatherObserver>
+        -cityRepository: CityRepository
+        -running: boolean
+        -workerThread: Thread
+        +start(): void
+        +stop(): void
+        +run(): void
+    }
+}
+
+package "travelplanner.decorator" {
+    interface PlannableCity {
+        +getDescription(): String
+        +getTotalCost(): double
+        +getTotalHours(): double
+    }
+
+    class BaseCityPlan {
+        -city: City
+    }
+
+    abstract class ActivityDecorator {
+        #wrappedPlan: PlannableCity
+    }
+
+    class MuseumVisitDecorator
+    class ShoppingMallVisitDecorator
+    class ParkVisitDecorator
+    class CityCenterVisitDecorator
+}
+
+package "travelplanner.view" {
+    class MainFrame {
+        -weatherReportProvider: WeatherReportProvider
+        -temperatureChartPanel: TemperatureChartPanel
+        -weatherPieChartPanel: WeatherPieChartPanel
+        +updateWeatherData(): void
+    }
+
+    class TemperatureChartPanel {
+        -dataset: DefaultCategoryDataset
+        +updateWeatherData(): void
+    }
+
+    class WeatherPieChartPanel {
+        -dataset: DefaultPieDataset<String>
+        +updateWeatherData(): void
+    }
+}
+
+Main --> MainFrame
+City --> WeatherState
+
+CityRepository ..> City
+CityRepository ..> WeatherState
+
+SortStrategy <|.. NameSortStrategy
+SortStrategy <|.. PopulationSortStrategy
+SortStrategy <|.. AreaSortStrategy
+
+CityIterator <|.. SunnyCityIterator
+CityIterator <|.. CloudyCityIterator
+CityIterator <|.. RainyCityIterator
+CityIterator <|.. SnowyCityIterator
+WeatherFilteredCollection --> CityIterator
+WeatherFilteredCollection ..> City
+SunnyCityIterator ..> WeatherState
+CloudyCityIterator ..> WeatherState
+RainyCityIterator ..> WeatherState
+SnowyCityIterator ..> WeatherState
+
+WeatherSubject <|.. WeatherReportProvider
+Runnable <|.. WeatherReportProvider
+WeatherObserver <|.. MainFrame
+WeatherObserver <|.. TemperatureChartPanel
+WeatherObserver <|.. WeatherPieChartPanel
+WeatherReportProvider --> CityRepository
+WeatherReportProvider o--> WeatherObserver
+
+PlannableCity <|.. BaseCityPlan
+PlannableCity <|.. ActivityDecorator
+ActivityDecorator o--> PlannableCity
+ActivityDecorator <|-- MuseumVisitDecorator
+ActivityDecorator <|-- ShoppingMallVisitDecorator
+ActivityDecorator <|-- ParkVisitDecorator
+ActivityDecorator <|-- CityCenterVisitDecorator
+BaseCityPlan --> City
+
+MainFrame ..> SortStrategy
+MainFrame ..> WeatherFilteredCollection
+MainFrame ..> PlannableCity
+MainFrame --> TemperatureChartPanel
+MainFrame --> WeatherPieChartPanel
+
+@enduml
