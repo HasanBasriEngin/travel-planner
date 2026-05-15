@@ -1,6 +1,7 @@
 package travelplanner.view;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -8,6 +9,8 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.List;
@@ -27,6 +30,8 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
+import javax.swing.plaf.basic.BasicSplitPaneDivider;
+import javax.swing.plaf.basic.BasicSplitPaneUI;
 import travelplanner.decorator.BaseCityPlan;
 import travelplanner.decorator.CityCenterVisitDecorator;
 import travelplanner.decorator.MuseumVisitDecorator;
@@ -51,13 +56,18 @@ import travelplanner.strategy.SortStrategy;
 public class MainFrame extends JFrame implements WeatherObserver {
 
     private static final int DEFAULT_WIDTH = 1280;
-    private static final int DEFAULT_HEIGHT = 800;
+    private static final int DEFAULT_HEIGHT = 820;
+    private static final int MINIMUM_WIDTH = 760;
+    private static final int MINIMUM_HEIGHT = 660;
+    private static final int STACKED_LAYOUT_BREAKPOINT = 920;
+    private static final double LISTS_SPLIT_WEIGHT = 0.62;
+    private static final double CHARTS_SPLIT_WEIGHT = 0.78;
     private static final String SORT_BY_NAME = "Sort by Name";
     private static final String SORT_BY_POPULATION = "Sort by Population";
     private static final String SORT_BY_AREA = "Sort by Area";
     private static final String EMPTY_PLAN_MESSAGE =
             "No city selected. Select a city from the All Cities list to create a plan.";
-    private static final int SECTION_SPACING = 16;
+    private static final int SECTION_SPACING = 10;
 
     private final DefaultListModel<City> allCitiesListModel;
     private final DefaultListModel<City> weatherCitiesListModel;
@@ -78,7 +88,15 @@ public class MainFrame extends JFrame implements WeatherObserver {
     private final WeatherReportProvider weatherReportProvider;
     private final TemperatureChartPanel temperatureChartPanel;
     private final WeatherPieChartPanel weatherPieChartPanel;
+    private JSplitPane listsSplitPane;
+    private JSplitPane chartsSplitPane;
+    private JPanel plannerCenterPanel;
+    private JComponent plannerSelectedPanel;
+    private JComponent plannerActivitiesPanel;
+    private JComponent plannerSummaryPanel;
     private boolean refreshingAllCitiesList;
+    private boolean responsiveLayoutInitialized;
+    private boolean stackedLayout;
     private String selectedCityName;
 
     public MainFrame() {
@@ -108,11 +126,12 @@ public class MainFrame extends JFrame implements WeatherObserver {
 
         setTitle("Travel Planner System");
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        setMinimumSize(new Dimension(1080, 700));
+        setMinimumSize(new Dimension(MINIMUM_WIDTH, MINIMUM_HEIGHT));
         setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
         setResizable(true);
         setContentPane(createRootPanel());
         setLocationRelativeTo(null);
+        setExtendedState(getExtendedState() | JFrame.MAXIMIZED_BOTH);
 
         configureCityLists();
         configurePlannerComponents();
@@ -136,19 +155,28 @@ public class MainFrame extends JFrame implements WeatherObserver {
                 shutdown();
             }
         });
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                updateResponsiveLayout();
+            }
+        });
+        updateResponsiveLayout();
     }
 
     private JPanel createRootPanel() {
         JPanel rootPanel = new JPanel(new BorderLayout(0, 18));
         rootPanel.setBackground(UiStyles.APP_BACKGROUND);
-        rootPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        rootPanel.setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
         rootPanel.add(createTopControlCard(), BorderLayout.NORTH);
         rootPanel.add(createContentPanel(), BorderLayout.CENTER);
         return rootPanel;
     }
 
     private JPanel createTopControlCard() {
-        JPanel topCard = UiStyles.createCardPanel();
+        JPanel topCard = new JPanel(new BorderLayout(24, 0));
+        topCard.setOpaque(false);
+        topCard.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, 0));
 
         JPanel titlePanel = new JPanel();
         titlePanel.setOpaque(false);
@@ -159,27 +187,65 @@ public class MainFrame extends JFrame implements WeatherObserver {
         titleLabel.setForeground(UiStyles.TEXT_PRIMARY);
 
         JLabel subtitleLabel = UiStyles.createMutedLabel(
-                "Monitor city weather, compare destinations, and create simple activity plans."
+                "Compare destinations, watch live weather changes, and prepare activity budgets."
         );
 
         titlePanel.add(titleLabel);
         titlePanel.add(Box.createVerticalStrut(4));
         titlePanel.add(subtitleLabel);
+        titlePanel.add(Box.createVerticalStrut(10));
+        titlePanel.add(createMetricStrip());
 
-        JPanel controlsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        JPanel controlsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 0));
         controlsPanel.setOpaque(false);
-        controlsPanel.add(createControlGroup("Sort Cities:", sortOptionsComboBox));
-        controlsPanel.add(createControlGroup("Filter by Weather:", weatherFilterComboBox));
+        controlsPanel.add(createControlGroup("Sort Cities", sortOptionsComboBox));
+        controlsPanel.add(createControlGroup("Filter Weather", weatherFilterComboBox));
 
         topCard.add(titlePanel, BorderLayout.CENTER);
         topCard.add(controlsPanel, BorderLayout.EAST);
         return topCard;
     }
 
+    private JPanel createMetricStrip() {
+        JPanel metricStrip = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 0));
+        metricStrip.setOpaque(false);
+        metricStrip.setAlignmentX(Component.LEFT_ALIGNMENT);
+        metricStrip.add(createMetricPill(
+                "Destinations",
+                String.valueOf(CityRepository.getInstance().getCities().size()),
+                UiStyles.ACCENT
+        ));
+        metricStrip.add(createMetricPill("Weather States", String.valueOf(WeatherState.values().length),
+                UiStyles.SECONDARY_ACCENT));
+        metricStrip.add(createMetricPill("Activity Types", "4", UiStyles.WARM_ACCENT));
+        return metricStrip;
+    }
+
+    private JPanel createMetricPill(String labelText, String valueText, Color accentColor) {
+        JPanel metricPanel = new JPanel(new BorderLayout(8, 0));
+        metricPanel.setOpaque(false);
+        metricPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+
+        JLabel valueLabel = new JLabel(valueText);
+        valueLabel.setFont(UiStyles.emphasisFont());
+        valueLabel.setForeground(accentColor);
+
+        JLabel textLabel = UiStyles.createMutedLabel(labelText);
+        textLabel.setFont(UiStyles.smallFont());
+
+        metricPanel.add(valueLabel, BorderLayout.WEST);
+        metricPanel.add(textLabel, BorderLayout.CENTER);
+        return metricPanel;
+    }
+
     private JComponent createControlGroup(String labelText, JComboBox<?> comboBox) {
         JPanel controlGroup = new JPanel(new BorderLayout(0, 6));
         controlGroup.setOpaque(false);
+        controlGroup.setPreferredSize(new Dimension(170, 58));
+        controlGroup.setMinimumSize(new Dimension(170, 58));
         JLabel label = UiStyles.createLabel(labelText);
+        label.setFont(UiStyles.smallEmphasisFont());
+        label.setForeground(UiStyles.TEXT_SECONDARY);
         controlGroup.add(label, BorderLayout.NORTH);
         controlGroup.add(comboBox, BorderLayout.CENTER);
         return controlGroup;
@@ -189,23 +255,23 @@ public class MainFrame extends JFrame implements WeatherObserver {
         JPanel contentPanel = new ViewportWidthPanel(new GridBagLayout());
         contentPanel.setOpaque(true);
         contentPanel.setBackground(UiStyles.APP_BACKGROUND);
-        contentPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        contentPanel.setBorder(BorderFactory.createEmptyBorder());
 
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
         constraints.gridy = 0;
         constraints.weightx = 1.0;
-        constraints.weighty = 0.42;
+        constraints.weighty = 0.35;
         constraints.fill = GridBagConstraints.BOTH;
         constraints.insets = new Insets(0, 0, SECTION_SPACING, 0);
         contentPanel.add(createListsSection(), constraints);
 
         constraints.gridy = 1;
-        constraints.weighty = 0.38;
+        constraints.weighty = 0.42;
         contentPanel.add(createChartsSection(), constraints);
 
         constraints.gridy = 2;
-        constraints.weighty = 0.20;
+        constraints.weighty = 0.23;
         constraints.insets = new Insets(0, 0, 0, 0);
         contentPanel.add(createPlannerPanel(), constraints);
 
@@ -214,22 +280,24 @@ public class MainFrame extends JFrame implements WeatherObserver {
         contentScrollPane.getViewport().setBackground(UiStyles.APP_BACKGROUND);
         contentScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         contentScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        contentScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        contentScrollPane.getVerticalScrollBar().setUnitIncrement(18);
         return contentScrollPane;
     }
 
     private JSplitPane createListsSection() {
         JPanel allCitiesPanel = createAllCitiesPanel();
         JPanel weatherCitiesPanel = createWeatherCitiesPanel();
-        allCitiesPanel.setMinimumSize(new Dimension(420, 320));
-        weatherCitiesPanel.setMinimumSize(new Dimension(280, 320));
-        return createResponsiveSplitPane(allCitiesPanel, weatherCitiesPanel, 0.62, 350);
+        allCitiesPanel.setMinimumSize(new Dimension(300, 230));
+        weatherCitiesPanel.setMinimumSize(new Dimension(300, 230));
+        listsSplitPane = createResponsiveSplitPane(allCitiesPanel, weatherCitiesPanel, LISTS_SPLIT_WEIGHT, 310);
+        return listsSplitPane;
     }
 
     private JSplitPane createChartsSection() {
-        temperatureChartPanel.setMinimumSize(new Dimension(360, 300));
-        weatherPieChartPanel.setMinimumSize(new Dimension(320, 300));
-        return createResponsiveSplitPane(temperatureChartPanel, weatherPieChartPanel, 0.56, 360);
+        temperatureChartPanel.setMinimumSize(new Dimension(520, 280));
+        weatherPieChartPanel.setMinimumSize(new Dimension(300, 280));
+        chartsSplitPane = createResponsiveSplitPane(temperatureChartPanel, weatherPieChartPanel, CHARTS_SPLIT_WEIGHT, 340);
+        return chartsSplitPane;
     }
 
     private JSplitPane createResponsiveSplitPane(
@@ -242,11 +310,20 @@ public class MainFrame extends JFrame implements WeatherObserver {
         splitPane.setOpaque(false);
         splitPane.setBorder(BorderFactory.createEmptyBorder());
         splitPane.setContinuousLayout(true);
-        splitPane.setDividerSize(10);
+        splitPane.setDividerSize(18);
         splitPane.setResizeWeight(resizeWeight);
         splitPane.setDividerLocation(resizeWeight);
         splitPane.setAlignmentX(Component.LEFT_ALIGNMENT);
         splitPane.setPreferredSize(new Dimension(0, preferredHeight));
+        splitPane.setUI(new BasicSplitPaneUI() {
+            @Override
+            public BasicSplitPaneDivider createDefaultDivider() {
+                BasicSplitPaneDivider divider = new BasicSplitPaneDivider(this);
+                divider.setBorder(BorderFactory.createEmptyBorder());
+                divider.setBackground(UiStyles.APP_BACKGROUND);
+                return divider;
+            }
+        });
         return splitPane;
     }
 
@@ -279,7 +356,7 @@ public class MainFrame extends JFrame implements WeatherObserver {
         UiStyles.styleScrollPane(scrollPane);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setPreferredSize(new Dimension(320, 280));
+        scrollPane.setPreferredSize(new Dimension(320, 250));
         return scrollPane;
     }
 
@@ -288,7 +365,7 @@ public class MainFrame extends JFrame implements WeatherObserver {
         UiStyles.styleScrollPane(scrollPane);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setPreferredSize(new Dimension(280, 280));
+        scrollPane.setPreferredSize(new Dimension(280, 250));
         return scrollPane;
     }
 
@@ -304,15 +381,14 @@ public class MainFrame extends JFrame implements WeatherObserver {
         titlePanel.setOpaque(false);
         titlePanel.add(UiStyles.createSectionTitle("City Activity Planner"), BorderLayout.NORTH);
         titlePanel.add(UiStyles.createMutedLabel(
-                "Select a city and combine activities to build a simple visit plan."
+                "Activities, budget, and duration for the selected destination."
         ), BorderLayout.CENTER);
         return titlePanel;
     }
 
     private JPanel createPlannerBodyPanel() {
-        JPanel plannerBodyPanel = new JPanel(new BorderLayout(0, 16));
+        JPanel plannerBodyPanel = new JPanel(new BorderLayout(0, 0));
         plannerBodyPanel.setOpaque(false);
-        plannerBodyPanel.add(createPlannerSelectionPanel(), BorderLayout.NORTH);
         plannerBodyPanel.add(createPlannerCenterPanel(), BorderLayout.CENTER);
         return plannerBodyPanel;
     }
@@ -322,23 +398,64 @@ public class MainFrame extends JFrame implements WeatherObserver {
     }
 
     private JPanel createPlannerCenterPanel() {
-        JPanel centerPanel = new JPanel(new GridBagLayout());
-        centerPanel.setOpaque(false);
+        plannerCenterPanel = new JPanel(new GridBagLayout());
+        plannerCenterPanel.setOpaque(false);
+        plannerSelectedPanel = createPlannerSelectionPanel();
+        plannerActivitiesPanel = createPlannerActivitiesPanel();
+        plannerSummaryPanel = createPlannerSummaryPanel();
+        layoutPlannerCenter(false);
+        return plannerCenterPanel;
+    }
+
+    private void layoutPlannerCenter(boolean stacked) {
+        if (plannerCenterPanel == null || plannerSelectedPanel == null
+                || plannerActivitiesPanel == null || plannerSummaryPanel == null) {
+            return;
+        }
+
+        plannerCenterPanel.removeAll();
 
         GridBagConstraints constraints = new GridBagConstraints();
-        constraints.gridx = 0;
-        constraints.gridy = 0;
-        constraints.weightx = 0.42;
-        constraints.weighty = 1.0;
         constraints.fill = GridBagConstraints.BOTH;
-        constraints.insets = new Insets(0, 0, 0, 16);
-        centerPanel.add(createPlannerActivitiesPanel(), constraints);
+        constraints.weighty = 1.0;
 
-        constraints.gridx = 1;
-        constraints.weightx = 0.58;
-        constraints.insets = new Insets(0, 0, 0, 0);
-        centerPanel.add(createPlannerSummaryPanel(), constraints);
-        return centerPanel;
+        if (stacked) {
+            constraints.gridx = 0;
+            constraints.gridy = 0;
+            constraints.weightx = 1.0;
+            constraints.weighty = 0.24;
+            constraints.insets = new Insets(0, 0, 12, 0);
+            plannerCenterPanel.add(plannerSelectedPanel, constraints);
+
+            constraints.gridy = 1;
+            constraints.weighty = 0.36;
+            plannerCenterPanel.add(plannerActivitiesPanel, constraints);
+
+            constraints.gridy = 2;
+            constraints.weighty = 0.40;
+            constraints.insets = new Insets(0, 0, 0, 0);
+            plannerCenterPanel.add(plannerSummaryPanel, constraints);
+        } else {
+            constraints.gridx = 0;
+            constraints.gridy = 0;
+            constraints.weightx = 0.22;
+            constraints.weighty = 1.0;
+            constraints.insets = new Insets(0, 0, 0, 14);
+            plannerCenterPanel.add(plannerSelectedPanel, constraints);
+
+            constraints.gridx = 1;
+            constraints.weightx = 0.34;
+            constraints.insets = new Insets(0, 0, 0, 14);
+            plannerCenterPanel.add(plannerActivitiesPanel, constraints);
+
+            constraints.gridx = 2;
+            constraints.weightx = 0.44;
+            constraints.insets = new Insets(0, 0, 0, 0);
+            plannerCenterPanel.add(plannerSummaryPanel, constraints);
+        }
+
+        plannerCenterPanel.revalidate();
+        plannerCenterPanel.repaint();
     }
 
     private JPanel createPlannerActivitiesPanel() {
@@ -353,8 +470,9 @@ public class MainFrame extends JFrame implements WeatherObserver {
     }
 
     private JPanel createPlannerSummaryPanel() {
-        JPanel summaryPanel = new JPanel(new BorderLayout(0, 12));
-        summaryPanel.setOpaque(false);
+        JPanel summaryPanel = new JPanel(new BorderLayout(0, 10));
+        summaryPanel.setOpaque(true);
+        summaryPanel.setBackground(UiStyles.PANEL_BACKGROUND);
 
         summaryPanel.add(createPlannerSummaryMetricsPanel(), BorderLayout.NORTH);
         summaryPanel.add(createPlannerDescriptionPanel(), BorderLayout.CENTER);
@@ -362,11 +480,27 @@ public class MainFrame extends JFrame implements WeatherObserver {
     }
 
     private JPanel createPlannerSummaryMetricsPanel() {
-        JPanel metricsPanel = new JPanel(new GridLayout(1, 2, 12, 0));
-        metricsPanel.setOpaque(false);
-        metricsPanel.add(UiStyles.createInfoPanel("Total Cost", totalCostLabel));
-        metricsPanel.add(UiStyles.createInfoPanel("Total Required Hours", totalHoursLabel));
+        JPanel metricsPanel = new JPanel(new GridLayout(1, 2, 16, 0));
+        metricsPanel.setOpaque(true);
+        metricsPanel.setBackground(UiStyles.PANEL_BACKGROUND);
+        metricsPanel.add(createMetricSummaryPanel("Total Cost", totalCostLabel));
+        metricsPanel.add(createMetricSummaryPanel("Total Required Hours", totalHoursLabel));
         return metricsPanel;
+    }
+
+    private JPanel createMetricSummaryPanel(String title, JLabel valueLabel) {
+        JPanel metricPanel = new JPanel(new BorderLayout(0, 6));
+        metricPanel.setOpaque(true);
+        metricPanel.setBackground(UiStyles.PANEL_BACKGROUND);
+        metricPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, UiStyles.CARD_BORDER));
+
+        JLabel titleLabel = UiStyles.createMutedLabel(title);
+        titleLabel.setFont(UiStyles.smallEmphasisFont());
+        valueLabel.setForeground(UiStyles.ACCENT_DARK);
+
+        metricPanel.add(titleLabel, BorderLayout.NORTH);
+        metricPanel.add(valueLabel, BorderLayout.CENTER);
+        return metricPanel;
     }
 
     private JScrollPane createPlannerDescriptionPanel() {
@@ -374,7 +508,7 @@ public class MainFrame extends JFrame implements WeatherObserver {
         UiStyles.styleScrollPane(descriptionScrollPane);
         descriptionScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         descriptionScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        descriptionScrollPane.setPreferredSize(new Dimension(320, 170));
+        descriptionScrollPane.setPreferredSize(new Dimension(320, 70));
         return descriptionScrollPane;
     }
 
@@ -389,8 +523,8 @@ public class MainFrame extends JFrame implements WeatherObserver {
         weatherCitiesList.setBackground(UiStyles.CARD_BACKGROUND);
         allCitiesList.setSelectionBackground(UiStyles.ACCENT_SOFT);
         weatherCitiesList.setSelectionBackground(UiStyles.ACCENT_SOFT);
-        allCitiesList.setFixedCellHeight(74);
-        weatherCitiesList.setFixedCellHeight(74);
+        allCitiesList.setFixedCellHeight(72);
+        weatherCitiesList.setFixedCellHeight(72);
         allCitiesList.addListSelectionListener(event -> {
             if (!event.getValueIsAdjusting() && !refreshingAllCitiesList) {
                 City selectedCity = allCitiesList.getSelectedValue();
@@ -428,7 +562,11 @@ public class MainFrame extends JFrame implements WeatherObserver {
             }
 
             restoreSelectedCity(cityNameToRestore);
-            allCitiesStatusLabel.setText("Currently sorted by: " + sortOptionsComboBox.getSelectedItem());
+            allCitiesStatusLabel.setText(String.format(
+                    "%d cities sorted by %s.",
+                    sortedCities.size(),
+                    sortOptionsComboBox.getSelectedItem()
+            ));
         } finally {
             refreshingAllCitiesList = false;
         }
@@ -442,12 +580,18 @@ public class MainFrame extends JFrame implements WeatherObserver {
         List<City> cities = CityRepository.getInstance().getCities();
         WeatherFilteredCollection weatherFilteredCollection = new WeatherFilteredCollection(cities);
         CityIterator cityIterator = getSelectedWeatherIterator(weatherFilteredCollection);
+        int visibleCityCount = 0;
 
         while (cityIterator.hasNext()) {
             weatherCitiesListModel.addElement(cityIterator.next());
+            visibleCityCount++;
         }
 
-        weatherCitiesStatusLabel.setText("Showing cities with " + weatherFilterComboBox.getSelectedItem() + " weather.");
+        weatherCitiesStatusLabel.setText(String.format(
+                "%d cities with %s weather.",
+                visibleCityCount,
+                weatherFilterComboBox.getSelectedItem()
+        ));
     }
 
     private void refreshAllLists() {
@@ -544,6 +688,15 @@ public class MainFrame extends JFrame implements WeatherObserver {
         shoppingMallVisitCheckBox.setEnabled(enabled);
         parkVisitCheckBox.setEnabled(enabled);
         cityCenterVisitCheckBox.setEnabled(enabled);
+        refreshActivityControlStyle(museumVisitCheckBox, enabled);
+        refreshActivityControlStyle(shoppingMallVisitCheckBox, enabled);
+        refreshActivityControlStyle(parkVisitCheckBox, enabled);
+        refreshActivityControlStyle(cityCenterVisitCheckBox, enabled);
+    }
+
+    private void refreshActivityControlStyle(JCheckBox checkBox, boolean enabled) {
+        checkBox.setBackground(enabled ? UiStyles.PANEL_BACKGROUND : UiStyles.SURFACE_MUTED);
+        checkBox.setForeground(enabled ? UiStyles.TEXT_PRIMARY : UiStyles.TEXT_SECONDARY);
     }
 
     private PlannableCity buildPlanForSelectedCity(City selectedCity) {
@@ -575,6 +728,45 @@ public class MainFrame extends JFrame implements WeatherObserver {
                 refreshAllLists();
             }
         });
+    }
+
+    private void updateResponsiveLayout() {
+        int availableWidth = getContentPane() != null ? getContentPane().getWidth() : getWidth();
+        boolean shouldStack = availableWidth > 0 && availableWidth < STACKED_LAYOUT_BREAKPOINT;
+
+        if (responsiveLayoutInitialized && stackedLayout == shouldStack) {
+            return;
+        }
+
+        responsiveLayoutInitialized = true;
+        stackedLayout = shouldStack;
+
+        configureResponsiveSplitPane(listsSplitPane, shouldStack, LISTS_SPLIT_WEIGHT, 310, 460);
+        configureResponsiveSplitPane(chartsSplitPane, shouldStack, CHARTS_SPLIT_WEIGHT, 340, 500);
+        layoutPlannerCenter(shouldStack);
+        revalidate();
+        repaint();
+    }
+
+    private void configureResponsiveSplitPane(
+            JSplitPane splitPane,
+            boolean shouldStack,
+            double resizeWeight,
+            int widePreferredHeight,
+            int stackedPreferredHeight
+    ) {
+        if (splitPane == null) {
+            return;
+        }
+
+        int orientation = shouldStack ? JSplitPane.VERTICAL_SPLIT : JSplitPane.HORIZONTAL_SPLIT;
+        splitPane.setOrientation(orientation);
+        splitPane.setResizeWeight(resizeWeight);
+        splitPane.setPreferredSize(new Dimension(
+                0,
+                shouldStack ? stackedPreferredHeight : widePreferredHeight
+        ));
+        SwingUtilities.invokeLater(() -> splitPane.setDividerLocation(resizeWeight));
     }
 
     private void shutdown() {

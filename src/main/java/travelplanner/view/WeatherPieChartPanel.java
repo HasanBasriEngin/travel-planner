@@ -34,12 +34,12 @@ public class WeatherPieChartPanel extends JPanel implements WeatherObserver {
         this.dataset = new DefaultPieDataset<>();
         this.chartPanel = createChartPanel();
 
-        setLayout(new BorderLayout(0, 14));
+        setLayout(new BorderLayout(0, 8));
         setOpaque(true);
         setBackground(UiStyles.CARD_BACKGROUND);
         setBorder(UiStyles.createCardBorder());
-        setMinimumSize(new Dimension(320, 300));
-        setPreferredSize(new Dimension(400, 340));
+        setMinimumSize(new Dimension(320, 280));
+        setPreferredSize(new Dimension(460, 340));
         add(createHeaderPanel(), BorderLayout.NORTH);
         add(chartPanel, BorderLayout.CENTER);
         refreshChartData();
@@ -60,8 +60,8 @@ public class WeatherPieChartPanel extends JPanel implements WeatherObserver {
         plot.setBackgroundPaint(UiStyles.CARD_BACKGROUND);
         plot.setOutlineVisible(false);
         plot.setShadowPaint(null);
-        plot.setLabelBackgroundPaint(Color.WHITE);
-        plot.setLabelOutlinePaint(UiStyles.CARD_BORDER);
+        plot.setLabelBackgroundPaint(new Color(255, 255, 255, 0));
+        plot.setLabelOutlinePaint(null);
         plot.setLabelShadowPaint(null);
         plot.setLabelFont(UiStyles.smallFont());
         plot.setLabelPaint(UiStyles.TEXT_PRIMARY);
@@ -86,10 +86,14 @@ public class WeatherPieChartPanel extends JPanel implements WeatherObserver {
         panel.setBorder(BorderFactory.createEmptyBorder());
         panel.setOpaque(false);
         panel.setBackground(UiStyles.CARD_BACKGROUND);
-        panel.setMouseWheelEnabled(true);
+        panel.setMouseWheelEnabled(false);
+        panel.setMouseZoomable(false);
+        panel.setDomainZoomable(false);
+        panel.setRangeZoomable(false);
+        panel.setPopupMenu(null);
         panel.setMinimumDrawWidth(240);
-        panel.setMinimumDrawHeight(240);
-        panel.setPreferredSize(new Dimension(340, 260));
+        panel.setMinimumDrawHeight(220);
+        panel.setPreferredSize(new Dimension(380, 260));
         return panel;
     }
 

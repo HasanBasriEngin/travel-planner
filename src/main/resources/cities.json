@@ -68,5 +68,145 @@
     "area": 13903.0,
     "currentTemperature": 11.9,
     "currentWeatherState": "SNOWY"
+  },
+  {
+    "name": "Sanliurfa",
+    "population": 2213964,
+    "area": 19242.0,
+    "currentTemperature": 25.4,
+    "currentWeatherState": "SUNNY"
+  },
+  {
+    "name": "Diyarbakir",
+    "population": 1818048,
+    "area": 15355.0,
+    "currentTemperature": 21.7,
+    "currentWeatherState": "SUNNY"
+  },
+  {
+    "name": "Mersin",
+    "population": 1938389,
+    "area": 15853.0,
+    "currentTemperature": 22.8,
+    "currentWeatherState": "CLOUDY"
+  },
+  {
+    "name": "Kayseri",
+    "population": 1441523,
+    "area": 16970.0,
+    "currentTemperature": 10.6,
+    "currentWeatherState": "SNOWY"
+  },
+  {
+    "name": "Kocaeli",
+    "population": 2079072,
+    "area": 3623.0,
+    "currentTemperature": 16.1,
+    "currentWeatherState": "RAINY"
+  },
+  {
+    "name": "Hatay",
+    "population": 1686043,
+    "area": 5524.0,
+    "currentTemperature": 20.5,
+    "currentWeatherState": "RAINY"
+  },
+  {
+    "name": "Manisa",
+    "population": 1475716,
+    "area": 13339.0,
+    "currentTemperature": 18.9,
+    "currentWeatherState": "SUNNY"
+  },
+  {
+    "name": "Samsun",
+    "population": 1368488,
+    "area": 9725.0,
+    "currentTemperature": 14.8,
+    "currentWeatherState": "CLOUDY"
+  },
+  {
+    "name": "Balikesir",
+    "population": 1257590,
+    "area": 14583.0,
+    "currentTemperature": 15.9,
+    "currentWeatherState": "CLOUDY"
+  },
+  {
+    "name": "Kahramanmaras",
+    "population": 1177436,
+    "area": 14520.0,
+    "currentTemperature": 17.4,
+    "currentWeatherState": "SUNNY"
+  },
+  {
+    "name": "Van",
+    "population": 1128749,
+    "area": 20921.0,
+    "currentTemperature": 7.8,
+    "currentWeatherState": "SNOWY"
+  },
+  {
+    "name": "Aydin",
+    "population": 1148241,
+    "area": 8007.0,
+    "currentTemperature": 21.2,
+    "currentWeatherState": "SUNNY"
+  },
+  {
+    "name": "Denizli",
+    "population": 1056332,
+    "area": 11868.0,
+    "currentTemperature": 16.7,
+    "currentWeatherState": "CLOUDY"
+  },
+  {
+    "name": "Sakarya",
+    "population": 1080080,
+    "area": 4824.0,
+    "currentTemperature": 15.6,
+    "currentWeatherState": "RAINY"
+  },
+  {
+    "name": "Tekirdag",
+    "population": 1142451,
+    "area": 6190.0,
+    "currentTemperature": 13.9,
+    "currentWeatherState": "CLOUDY"
+  },
+  {
+    "name": "Mugla",
+    "population": 1066215,
+    "area": 12654.0,
+    "currentTemperature": 22.1,
+    "currentWeatherState": "SUNNY"
+  },
+  {
+    "name": "Mardin",
+    "population": 888874,
+    "area": 8780.0,
+    "currentTemperature": 19.8,
+    "currentWeatherState": "SUNNY"
+  },
+  {
+    "name": "Malatya",
+    "population": 812580,
+    "area": 12313.0,
+    "currentTemperature": 12.6,
+    "currentWeatherState": "SNOWY"
+  },
+  {
+    "name": "Erzurum",
+    "population": 749993,
+    "area": 25006.0,
+    "currentTemperature": 4.5,
+    "currentWeatherState": "SNOWY"
+  },
+  {
+    "name": "Ordu",
+    "population": 763190,
+    "area": 5861.0,
+    "currentTemperature": 13.4,
+    "currentWeatherState": "RAINY"
   }
 ]
