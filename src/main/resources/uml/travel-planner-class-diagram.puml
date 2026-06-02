@@ -1,12 +1,16 @@
 @startuml
-title Travel Planner System - Class Diagram
+title Travel Planner System - Complete Class Diagram
 
 skinparam classAttributeIconSize 0
 skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 35
+skinparam ranksep 35
 
 package "travelplanner" {
     class Main {
-        +main(args: String[]): void
+        +{static} main(args: String[]): void
     }
 }
 
@@ -24,6 +28,8 @@ package "travelplanner.model" {
         -area: double
         -currentTemperature: double
         -currentWeatherState: WeatherState
+        +City()
+        +City(other: City)
         +getName(): String
         +getPopulation(): int
         +getArea(): double
@@ -34,30 +40,37 @@ package "travelplanner.model" {
 
 package "travelplanner.repository" {
     class CityRepository <<Singleton>> {
-        -CITY_RESOURCE: String
-        -INSTANCE: CityRepository
+        -{static} INSTANCE: CityRepository
         -cities: List<City>
-        -random: Random
         -CityRepository()
         +{static} getInstance(): CityRepository
         +getCities(): List<City>
         +updateRandomCityWeather(): void
         +getWeatherCounts(): Map<WeatherState, Integer>
+        -loadCities(): List<City>
     }
 }
 
 package "travelplanner.strategy" {
-    interface SortStrategy {
+    interface SortStrategy <<Strategy>> {
         +sort(cities: List<City>): List<City>
     }
 
-    class NameSortStrategy
-    class PopulationSortStrategy
-    class AreaSortStrategy
+    class NameSortStrategy {
+        +sort(cities: List<City>): List<City>
+    }
+
+    class PopulationSortStrategy {
+        +sort(cities: List<City>): List<City>
+    }
+
+    class AreaSortStrategy {
+        +sort(cities: List<City>): List<City>
+    }
 }
 
 package "travelplanner.iterator" {
-    interface CityIterator {
+    interface CityIterator <<Iterator>> {
         +hasNext(): boolean
         +next(): City
     }
@@ -70,29 +83,57 @@ package "travelplanner.iterator" {
         +createSnowyIterator(): CityIterator
     }
 
-    class SunnyCityIterator
-    class CloudyCityIterator
-    class RainyCityIterator
-    class SnowyCityIterator
+    class SunnyCityIterator {
+        -cities: List<City>
+        -currentIndex: int
+        +hasNext(): boolean
+        +next(): City
+        -findNextIndex(startIndex: int): int
+    }
+
+    class CloudyCityIterator {
+        -cities: List<City>
+        -currentIndex: int
+        +hasNext(): boolean
+        +next(): City
+        -findNextIndex(startIndex: int): int
+    }
+
+    class RainyCityIterator {
+        -cities: List<City>
+        -currentIndex: int
+        +hasNext(): boolean
+        +next(): City
+        -findNextIndex(startIndex: int): int
+    }
+
+    class SnowyCityIterator {
+        -cities: List<City>
+        -currentIndex: int
+        +hasNext(): boolean
+        +next(): City
+        -findNextIndex(startIndex: int): int
+    }
 }
 
 package "travelplanner.observer" {
-    interface WeatherObserver {
+    interface WeatherObserver <<Observer>> {
         +updateWeatherData(): void
     }
 
-    interface WeatherSubject {
+    interface WeatherSubject <<Subject>> {
         +attach(observer: WeatherObserver): void
         +detach(observer: WeatherObserver): void
         +notifyObservers(): void
     }
 
-    class WeatherReportProvider {
-        -UPDATE_INTERVAL_MILLISECONDS: long
+    class WeatherReportProvider <<Concrete Subject>> {
         -observers: List<WeatherObserver>
         -cityRepository: CityRepository
-        -running: boolean
         -workerThread: Thread
+        +attach(observer: WeatherObserver): void
+        +detach(observer: WeatherObserver): void
+        +notifyObservers(): void
         +start(): void
         +stop(): void
         +run(): void
@@ -100,87 +141,185 @@ package "travelplanner.observer" {
 }
 
 package "travelplanner.decorator" {
-    interface PlannableCity {
+    interface PlannableCity <<Component>> {
         +getDescription(): String
         +getTotalCost(): double
         +getTotalHours(): double
     }
 
-    class BaseCityPlan {
+    class BaseCityPlan <<Concrete Component>> {
         -city: City
+        +getDescription(): String
+        +getTotalCost(): double
+        +getTotalHours(): double
     }
 
-    abstract class ActivityDecorator {
+    abstract class ActivityDecorator <<Decorator>> {
         #wrappedPlan: PlannableCity
     }
 
-    class MuseumVisitDecorator
-    class ShoppingMallVisitDecorator
-    class ParkVisitDecorator
-    class CityCenterVisitDecorator
+    class MuseumVisitDecorator {
+        +getDescription(): String
+        +getTotalCost(): double
+        +getTotalHours(): double
+    }
+
+    class ShoppingMallVisitDecorator {
+        +getDescription(): String
+        +getTotalCost(): double
+        +getTotalHours(): double
+    }
+
+    class ParkVisitDecorator {
+        +getDescription(): String
+        +getTotalCost(): double
+        +getTotalHours(): double
+    }
+
+    class CityCenterVisitDecorator {
+        +getDescription(): String
+        +getTotalCost(): double
+        +getTotalHours(): double
+    }
 }
 
 package "travelplanner.view" {
-    class MainFrame {
+    class MainFrame <<Concrete Observer>> {
+        -allCitiesListModel: DefaultListModel<City>
+        -weatherCitiesListModel: DefaultListModel<City>
+        -sortOptionsComboBox: JComboBox<String>
+        -weatherFilterComboBox: JComboBox<WeatherState>
         -weatherReportProvider: WeatherReportProvider
         -temperatureChartPanel: TemperatureChartPanel
         -weatherPieChartPanel: WeatherPieChartPanel
+        +MainFrame()
+        -refreshAllCitiesList(): void
+        -refreshWeatherCitiesList(): void
+        -getSelectedSortStrategy(): SortStrategy
+        -getSelectedWeatherIterator(collection: WeatherFilteredCollection): CityIterator
+        -buildPlanForSelectedCity(selectedCity: City): PlannableCity
         +updateWeatherData(): void
     }
 
-    class TemperatureChartPanel {
+    class TemperatureChartPanel <<Concrete Observer>> {
+        -cityRepository: CityRepository
         -dataset: DefaultCategoryDataset
+        +TemperatureChartPanel()
+        -refreshChartData(): void
         +updateWeatherData(): void
     }
 
-    class WeatherPieChartPanel {
+    class WeatherPieChartPanel <<Concrete Observer>> {
+        -cityRepository: CityRepository
         -dataset: DefaultPieDataset<String>
+        +WeatherPieChartPanel()
+        -refreshChartData(): void
         +updateWeatherData(): void
+    }
+
+    class ResponsiveCityList {
+        +getScrollableTracksViewportWidth(): boolean
+    }
+
+    class ViewportWidthPanel {
+        +getScrollableTracksViewportWidth(): boolean
+        +getScrollableTracksViewportHeight(): boolean
+    }
+
+    class CityListCellRenderer {
+        -titleLabel: JLabel
+        -detailsLabel: JLabel
+        -weatherLabel: JLabel
+        +getListCellRendererComponent(...): Component
+    }
+
+    class "CityListCellRenderer.WeatherBadge" as WeatherBadge {
+        #paintComponent(graphics: Graphics): void
+    }
+
+    class UiStyles {
+        +{static} createCardPanel(): JPanel
+        +{static} createSectionTitle(text: String): JLabel
+        +{static} styleComboBox(comboBox: JComboBox<?>): void
+        +{static} styleCheckBox(checkBox: JCheckBox): void
+        +{static} createInfoPanel(title: String, content: JComponent): JPanel
     }
 }
 
-Main --> MainFrame
+' Model and repository
 City --> WeatherState
-
-CityRepository ..> City
+CityRepository o-- City
 CityRepository ..> WeatherState
 
+' Application entry point
+Main ..> MainFrame
+
+' Strategy
 SortStrategy <|.. NameSortStrategy
 SortStrategy <|.. PopulationSortStrategy
 SortStrategy <|.. AreaSortStrategy
+MainFrame ..> SortStrategy
+MainFrame ..> NameSortStrategy
+MainFrame ..> PopulationSortStrategy
+MainFrame ..> AreaSortStrategy
 
+' Iterator
 CityIterator <|.. SunnyCityIterator
 CityIterator <|.. CloudyCityIterator
 CityIterator <|.. RainyCityIterator
 CityIterator <|.. SnowyCityIterator
-WeatherFilteredCollection --> CityIterator
-WeatherFilteredCollection ..> City
-SunnyCityIterator ..> WeatherState
-CloudyCityIterator ..> WeatherState
-RainyCityIterator ..> WeatherState
-SnowyCityIterator ..> WeatherState
+WeatherFilteredCollection o-- City
+WeatherFilteredCollection ..> CityIterator
+WeatherFilteredCollection ..> SunnyCityIterator
+WeatherFilteredCollection ..> CloudyCityIterator
+WeatherFilteredCollection ..> RainyCityIterator
+WeatherFilteredCollection ..> SnowyCityIterator
+MainFrame ..> WeatherFilteredCollection
+MainFrame ..> CityIterator
 
+' Observer
 WeatherSubject <|.. WeatherReportProvider
-Runnable <|.. WeatherReportProvider
 WeatherObserver <|.. MainFrame
 WeatherObserver <|.. TemperatureChartPanel
 WeatherObserver <|.. WeatherPieChartPanel
+WeatherReportProvider o-- WeatherObserver
 WeatherReportProvider --> CityRepository
-WeatherReportProvider o--> WeatherObserver
+WeatherReportProvider ..|> Runnable
+MainFrame *-- WeatherReportProvider
+MainFrame *-- TemperatureChartPanel
+MainFrame *-- WeatherPieChartPanel
 
+' Decorator
 PlannableCity <|.. BaseCityPlan
 PlannableCity <|.. ActivityDecorator
-ActivityDecorator o--> PlannableCity
+ActivityDecorator o-- PlannableCity
 ActivityDecorator <|-- MuseumVisitDecorator
 ActivityDecorator <|-- ShoppingMallVisitDecorator
 ActivityDecorator <|-- ParkVisitDecorator
 ActivityDecorator <|-- CityCenterVisitDecorator
 BaseCityPlan --> City
-
-MainFrame ..> SortStrategy
-MainFrame ..> WeatherFilteredCollection
 MainFrame ..> PlannableCity
-MainFrame --> TemperatureChartPanel
-MainFrame --> WeatherPieChartPanel
+MainFrame ..> BaseCityPlan
+MainFrame ..> MuseumVisitDecorator
+MainFrame ..> ShoppingMallVisitDecorator
+MainFrame ..> ParkVisitDecorator
+MainFrame ..> CityCenterVisitDecorator
+
+' View helpers
+MainFrame --> ResponsiveCityList
+MainFrame --> ViewportWidthPanel
+MainFrame --> CityListCellRenderer
+MainFrame ..> UiStyles
+TemperatureChartPanel ..> UiStyles
+WeatherPieChartPanel ..> UiStyles
+CityListCellRenderer ..> UiStyles
+CityListCellRenderer --> WeatherState
+CityListCellRenderer *-- WeatherBadge
+ResponsiveCityList --|> JList
+ViewportWidthPanel --|> JPanel
+ViewportWidthPanel ..|> Scrollable
+CityListCellRenderer --|> JPanel
+CityListCellRenderer ..|> ListCellRenderer
+WeatherBadge --|> JLabel
 
 @enduml
